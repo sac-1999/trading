@@ -1,0 +1,9 @@
+logzero==1.7.0
+mplfinance==0.12.10b0
+pandas_ta==0.3.14b0
+pyotp==2.8.0
+smartapi-python==1.4.8
+appdirs==1.4.4
+websocket==0.2.1
+python-dotenv
+pandas
