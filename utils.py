@@ -20,8 +20,8 @@ def filter_by_day(df, scanday):
     return df
 
 def resample(data, interval, offset = '0min'):
-    if interval == '10min' or interval == '1h':
-        offset = '15min' 
+    # if interval == '10min' or interval == '1h':
+    offset = '15min' 
     data.index = pd.to_datetime(data['timestamp'])
     data = data.resample(interval, offset = offset).agg({
         'open': 'first',
@@ -75,7 +75,7 @@ def get_dates(startdate, enddate):
 
 
 def filter_data_by_dates(df, startdate, enddate):
-    df = df[(df['day'] >= pd.to_datetime(startdate).date()) & (df['day'] < pd.to_datetime(enddate).date())]
+    df = df[(df['day'] >= pd.to_datetime(startdate).date()) & (df['day'] <= pd.to_datetime(enddate).date())]
     df = df.sort_values(by='timestamp')
     df.reset_index(inplace = True, drop = True)
     return df
@@ -174,3 +174,37 @@ def future(df, entry, sl, trade_type):
             maxrr = max(maxrr,(entry - row['low']) / (sl - entry))
         
     return maxrr
+
+
+def find_past_peaks(df, window):
+    df['peak'] = np.nan
+    for i in range(len(df)):
+        if i == len(df)-window:
+            break
+
+        left = df.iloc[max(i-window,0) : i+1]
+        right = df.iloc[i+1 : i+window+1]
+        curr = df.iloc[i]
+        if curr['high'] >= left['high'].max() and curr['high'] >= right['high'].max():
+            df.loc[i, 'peak'] = df.iloc[i]['high']
+    df['peak'] = df['peak'].shift(window+1)
+    return df 
+
+
+def find_past_bottoms(df, window):
+    df['bottom'] = np.nan
+    for i in range(len(df)):
+        if i == len(df)-window:
+            break
+
+        left = df.iloc[max(i-window,0) : i+1]
+        right = df.iloc[i+1 : i+window+1]
+        curr = df.iloc[i]
+        if curr['low'] <= left['low'].min() and curr['low'] <= right['low'].min():
+            df.loc[i, 'bottom'] = df.iloc[i]['low']
+    df['bottom'] = df['bottom'].shift(window+1)
+    return df 
+
+def filter_by_time(df, starttime, endtime):
+    df = df[(df['time'] >= pd.to_datetime(starttime).time()) & (df['time'] <= pd.to_datetime(endtime).time())]
+    return df
