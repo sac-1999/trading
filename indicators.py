@@ -6,7 +6,7 @@ class Indicators:
         if feature and featurenumber==-1:
             raise ValueError(f"[Error [atr] ] This is a feature but featurenumber{featurenumber} is not greater than -1")
         
-        colname = "atr_"
+        colname = "atr"
         if feature:
             colname = "feature_" + str(featurenumber)
         if colname in data.columns:
@@ -59,7 +59,9 @@ class Indicators:
             raise ValueError(f"[Error [vwap]] {colname} already exists in given dataframe")
 
         data.index = pd.to_datetime(data['timestamp'])
-        data[colname] = ta.vwap(data['close'], data['close'], data['close'], data['volume'])
+        data[colname] = ta.vwap(data['high'], data['low'], data['close'], data['volume'])
+        
+        
         if feature:
             data[colname] = round((data['close'] - data[colname] )/data['close'] * 100, 2)
         data.reset_index(inplace=True, drop=True)
