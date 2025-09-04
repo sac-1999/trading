@@ -28,9 +28,9 @@ stream = CandleStream()
 exchange = 'NSE'
 start_date = datetime(2025, 4, 1, 9, 10)
 end_date = datetime(2025, 8, 29, 9, 10)
-interval = "10min"
+interval = "5min"
 all_results = []
-save_image_tmp = False
+save_image_tmp = True
 s_r_timeframe = '30min'
 level_window = 5  
 maxnumber_of_levels = 5
@@ -52,7 +52,7 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
 
         
     def save_image(self, df, day, peaks, bottoms, entry, sl, maxrr, dayendrr):
-        if not save_image_tmp:
+        if not self.kwargs.get('save_trade'): 
             return 
         currdf = utils.filter_data_by_dates(df.copy(), day, day)
         stock_high = currdf['high'].max()
@@ -91,10 +91,10 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
                 line = pd.Series(bottom, index=df.index)
                 ema_plots.append(mpf.make_addplot(line, color='blue', linestyle='-', width=1))
 
-        # if 'ema_100' in list(df.columns):
-        #     ema_plots.append(mpf.make_addplot(df['ema_100'], color='black', width=3))
-        # if 'ema_700' in list(df.columns):
-        #     ema_plots.append(mpf.make_addplot(df['ema_700'], color='black', width=3)) 
+        if 'ema_11' in list(df.columns):
+            ema_plots.append(mpf.make_addplot(df['ema_11'], color='black', width=3))
+        if 'ema_21' in list(df.columns):
+            ema_plots.append(mpf.make_addplot(df['ema_21'], color='black', width=3)) 
 
         
         # ema_plots.append(mpf.make_addplot(df['stochk_9_3'], panel = 2, color='black', width=1)) 
@@ -192,13 +192,22 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
     def trade_strategy(self, df, newpeaks, newbottoms, prevdaydf):
         df = utils.filter_by_time(df, '9:14', '15:00')
         df.reset_index(inplace = True, drop = True)
-        df['max'] = df['high'].cummax()
-        rule1 = (df['max'] == df['high']) & (df['close'] < df['low'].shift(1)) & (df['close'] < df['ema_100'])
-        rule2 = (df['max'] == df['high'].shift(1)) & (df['close'] < df['low'].shift(1)) & (df['close'].shift(1) > df['open'].shift(1))
+        df['ema_failed_11'] = df['close'] < df['ema_11']
+        df['ema_failed_11'] = df['ema_failed_11'].cummax()
+        df['ema_failed_21'] = df['close'] < df['ema_21']
+        df['ema_failed_21'] = df['ema_failed_21'].cummax()
+
+        df['stochk_9_3_mean'] = df['stochk_9_3'].rolling(window=3, min_periods=1).mean()
+        df['stochk_14_3_mean'] = df['stochk_14_3'].rolling(window=2, min_periods=1).mean()
+
+
+        rule1 = (df['ema_failed_11'].shift(2) == False) & (df['close'] > df['high'].shift(1)) & (df['low'] < df['ema_11'])
+        rule2 = (df['ema_failed_21'].shift(2) == False) & (df['close'] > df['high'].shift(1)) & (df['low'] < df['ema_21'])
         # volumerule = ((df['volume'] > df['volume'].shift(1)) & (df['volume'] > df['volume_mean'])) | ((df['volume'].shift(1) > df['volume'].shift(2)) & (df['volume'].shift(1) > df['volume_mean'].shift(1)))
-        df['breakdown'] = (rule1 | rule2) & (df['time'] < pd.to_datetime('13:45').time()) & (df['time'] >= pd.to_datetime('09:40').time())
-        df['sl'] = np.maximum(df['high'] , df['high'].shift(1))
-        breakdf = df[df['breakdown']]
+        
+        df['breakout'] = (rule1 | rule2) & (df['time'] < pd.to_datetime('13:45').time()) & (df['time'] >= pd.to_datetime('09:10').time()) & ((df['stochk_9_3_mean'] < 25) | (df['stochk_14_3_mean'] < 25))
+        df['sl'] = np.minimum(df['low'] , df['low'].shift(1))
+        breakdf = df[df['breakout']]
 
         if len(breakdf) == 0:
             return 
@@ -206,16 +215,16 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         traderow = breakdf.iloc[0]
         entry = traderow['close']
         sl = traderow['sl']                
-        sl = sl + sl * 0.001
+        sl = sl - sl * 0.001
         df['sl'] = sl
         df['entry'] = entry
         
         futdf = df[df['time'] > traderow['time']].copy()
         futdf['sl'] = sl
         futdf['entry'] = entry
-        futdf['rr'] = round(((futdf['entry'] - futdf['low'])/(futdf['sl'] - futdf['entry'])), 1) 
+        futdf['rr'] = round(((futdf['high'] - futdf['entry'])/(futdf['entry'] - futdf['sl'])), 1) 
         futdf['maxrr'] = futdf['rr'].cummax()
-        futdf['slhit'] = futdf['high'] > futdf['sl']
+        futdf['slhit'] = futdf['low'] < futdf['sl']
         futdf['slhit'] = futdf['slhit'].cummax()
         futdf = futdf[futdf['slhit'] == False]
         maxrr = -1
@@ -231,10 +240,13 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
 
     def apply_strategy(self):   
         df = self.df.copy()
-        df = Indicators.ema(df, 100)
-        df = Indicators.ema(df, 200)
+        df = Indicators.ema(df, 21)
+        df = Indicators.ema(df, 11)
         df = Indicators.vwap(df)
         df = Indicators.atr(df)
+        df = Indicators.stoch(df, 4, 9, 3)
+        df = Indicators.stoch(df, 4, 14, 3)
+
 
         df['day'] = df['timestamp'].dt.date
         df['time'] = df['timestamp'].dt.time
@@ -243,7 +255,7 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         alldays = sorted(df['day'].unique(), key=pd.to_datetime)
         prevday = None
         for x_day in alldays:
-            if (datetime.today() - timedelta(100)).date() >= pd.to_datetime(x_day).date():
+            if (datetime.today() - timedelta(150)).date() >= pd.to_datetime(x_day).date():
                 prevday = x_day
                 continue
             newprevday = pd.to_datetime(prevday) - timedelta(3)
@@ -257,7 +269,7 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
                     if trade is not None:
                         entry, sl, maxrr, dayendrr = trade
                         print(entry, sl)
-                        dflist = [prevdaydf, dftmp]
+                        dflist = [dftmp]
                         dftmp = pd.concat(dflist)
                         dftmp.reset_index(inplace = True, drop = True)
                         self.save_image(dftmp, x_day, newpeaks, newbottoms, entry, sl, maxrr, dayendrr)

@@ -27,10 +27,10 @@ stream = CandleStream()
 
 exchange = 'NSE'
 start_date = datetime(2025, 4, 1, 9, 10)
-end_date = datetime(2025, 8, 29, 9, 10)
-interval = "10min"
+end_date = datetime(2025, 9, 4, 9, 10)
+interval = "5min"
 all_results = []
-save_image_tmp = False
+save_image_tmp = True
 s_r_timeframe = '30min'
 level_window = 5  
 maxnumber_of_levels = 5
@@ -52,7 +52,7 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
 
         
     def save_image(self, df, day, peaks, bottoms, entry, sl, maxrr, dayendrr):
-        if not save_image_tmp:
+        if not self.kwargs.get('save_trade'): 
             return 
         currdf = utils.filter_data_by_dates(df.copy(), day, day)
         stock_high = currdf['high'].max()
@@ -91,14 +91,14 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
                 line = pd.Series(bottom, index=df.index)
                 ema_plots.append(mpf.make_addplot(line, color='blue', linestyle='-', width=1))
 
-        # if 'ema_100' in list(df.columns):
-        #     ema_plots.append(mpf.make_addplot(df['ema_100'], color='black', width=3))
-        # if 'ema_700' in list(df.columns):
-        #     ema_plots.append(mpf.make_addplot(df['ema_700'], color='black', width=3)) 
+        if 'ema_11' in list(df.columns):
+            ema_plots.append(mpf.make_addplot(df['ema_11'], color='black', width=3))
+        if 'ema_21' in list(df.columns):
+            ema_plots.append(mpf.make_addplot(df['ema_21'], color='black', width=3)) 
 
         
-        # ema_plots.append(mpf.make_addplot(df['stochk_9_3'], panel = 2, color='black', width=1)) 
-        # ema_plots.append(mpf.make_addplot(df['stochk_14_3'], panel = 2, color='yellow', width=2)) 
+        ema_plots.append(mpf.make_addplot(df['stochk_9_3'], panel = 2, color='black', width=2)) 
+        ema_plots.append(mpf.make_addplot(df['stochk_14_3'], panel = 2, color='orange', width=2)) 
         # ema_plots.append(mpf.make_addplot(df['stochk_40_3'], panel = 2, color='orange', width=3)) 
         # ema_plots.append(mpf.make_addplot(df['vwap'], color='red', width=4)) 
 
@@ -192,13 +192,30 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
     def trade_strategy(self, df, newpeaks, newbottoms, prevdaydf):
         df = utils.filter_by_time(df, '9:14', '15:00')
         df.reset_index(inplace = True, drop = True)
-        df['max'] = df['high'].cummax()
-        rule1 = (df['max'] == df['high']) & (df['close'] < df['low'].shift(1)) & (df['close'] < df['ema_100'])
-        rule2 = (df['max'] == df['high'].shift(1)) & (df['close'] < df['low'].shift(1)) & (df['close'].shift(1) > df['open'].shift(1))
+        # df['stochk_9_3_mean'] = df['stochk_9_3'].rolling(window=4, min_periods=1).mean()
+        # df['stochk_14_3_mean'] = df['stochk_14_3'].rolling(window=4, min_periods=1).mean()
+        # df['rule1'] = (df['stochk_14_3_mean'] > 80) & (df['stochk_9_3_mean'] > 80) & (df['time'] <= pd.to_datetime('10:00').time()) & (df['time'] >= pd.to_datetime('09:30').time()) 
+        # df['rule1'] = df['rule1'].cummax()
+        # df['rule2'] = df['rule1'] & (df['stochk_9_3'] > df['stochk_9_3'].shift(1)) & (df['stochk_9_3'].shift(1) < df['stochk_9_3'].shift(2)) & (df['stochk_14_3'] > df['stochk_14_3'].shift(1)) & (df['stochk_14_3'].shift(1) < df['stochk_14_3'].shift(2))
+        # df['breakout'] = (df['rule2']) & (df['time'] <= pd.to_datetime('11:00').time()) & (df['time'] >= pd.to_datetime('09:30').time()) 
+
+        df['ema_failed_11'] = np.where(df['close'] < df['ema_11'], 1, 0)
+        df['ema_failed_11'] = df['ema_failed_11'].cumsum()
+        df['ema_failed_21'] = np.where(df['close'] < df['ema_21'], 1, 0)
+        df['ema_failed_21'] = df['ema_failed_21'].cumsum()
+
+        # df['stochk_9_3_mean'] = df['stochk_9_3'].rolling(window=3, min_periods=1).mean()
+        # df['stochk_14_3_mean'] = df['stochk_14_3'].rolling(window=2, min_periods=1).mean()
+
+
+        rule1 = (df['ema_failed_11'].shift(2) <= 1) & (df['close'] > df['high'].shift(1)) & (df['low'] <= df['ema_11']) & (df['close'] > df['ema_11'])  &  (df['close'] > df['ema_50']) & (df['sectortrend'] == 1) & (df['ema_50'] > df['ema_50'].shift(1))
+        rule2 = (df['ema_failed_21'].shift(2) <= 1) & (df['close'] > df['high'].shift(1)) & (df['low'] <= df['ema_21']) & (df['close'] > df['ema_21'])  & (df['close'] > df['ema_50']) & (df['sectortrend'] == 1) & (df['ema_50'] > df['ema_50'].shift(1))
         # volumerule = ((df['volume'] > df['volume'].shift(1)) & (df['volume'] > df['volume_mean'])) | ((df['volume'].shift(1) > df['volume'].shift(2)) & (df['volume'].shift(1) > df['volume_mean'].shift(1)))
-        df['breakdown'] = (rule1 | rule2) & (df['time'] < pd.to_datetime('13:45').time()) & (df['time'] >= pd.to_datetime('09:40').time())
-        df['sl'] = np.maximum(df['high'] , df['high'].shift(1))
-        breakdf = df[df['breakdown']]
+        df['breakout'] = (rule1 | rule2) & (df['time'] >= pd.to_datetime('10:00').time()) & (df['time'] <= pd.to_datetime('11:30').time()) 
+
+        df['sl'] = np.minimum(df['low'] , df['low'].shift(1))
+
+        breakdf = df[df['breakout']]
 
         if len(breakdf) == 0:
             return 
@@ -206,16 +223,16 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         traderow = breakdf.iloc[0]
         entry = traderow['close']
         sl = traderow['sl']                
-        sl = sl + sl * 0.001
+        sl = sl - sl * 0.001
         df['sl'] = sl
         df['entry'] = entry
         
         futdf = df[df['time'] > traderow['time']].copy()
         futdf['sl'] = sl
         futdf['entry'] = entry
-        futdf['rr'] = round(((futdf['entry'] - futdf['low'])/(futdf['sl'] - futdf['entry'])), 1) 
+        futdf['rr'] = round(((futdf['high'] - futdf['entry'])/(futdf['entry'] - futdf['sl'])), 1) 
         futdf['maxrr'] = futdf['rr'].cummax()
-        futdf['slhit'] = futdf['high'] > futdf['sl']
+        futdf['slhit'] = futdf['low'] < futdf['sl']
         futdf['slhit'] = futdf['slhit'].cummax()
         futdf = futdf[futdf['slhit'] == False]
         maxrr = -1
@@ -231,10 +248,14 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
 
     def apply_strategy(self):   
         df = self.df.copy()
-        df = Indicators.ema(df, 100)
-        df = Indicators.ema(df, 200)
+        df = Indicators.ema(df, 50)
+        df = Indicators.ema(df, 11)
+        df = Indicators.ema(df, 21)
         df = Indicators.vwap(df)
         df = Indicators.atr(df)
+        df = Indicators.stoch(df, 4, 9, 3)
+        df = Indicators.stoch(df, 4, 14, 3)
+
 
         df['day'] = df['timestamp'].dt.date
         df['time'] = df['timestamp'].dt.time
@@ -257,7 +278,7 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
                     if trade is not None:
                         entry, sl, maxrr, dayendrr = trade
                         print(entry, sl)
-                        dflist = [prevdaydf, dftmp]
+                        dflist = [dftmp]
                         dftmp = pd.concat(dflist)
                         dftmp.reset_index(inplace = True, drop = True)
                         self.save_image(dftmp, x_day, newpeaks, newbottoms, entry, sl, maxrr, dayendrr)
@@ -272,24 +293,60 @@ def find_previous_levels(df):
     df = df[['timestamp', 'low', 'high', 'peak', 'bottom']]
     return df
 
-for symbol in pd.read_csv('ind_nifty200list.csv')['Symbol']:
-    # if 'infy' not in symbol.lower():
-    #     continue
-    try:
-        # print('I am here Draw some good volume surge graphs')
-        token = utils.get_token(exchange, symbol + '-EQ')
-        orgdf = dataset.get_data(stream, 'NSE', symbol, token, start_date, end_date, interval)   
-        levelsdf = find_previous_levels(orgdf.copy())
-        levelsdf['day'] = levelsdf['timestamp'].dt.date
-        mystrategy = High_volume_surge_on_day(orgdf.copy(), 'buy', symbol = symbol, save_trade = save_image_tmp,levelsdf = levelsdf)
-        results = mystrategy.run()
-        # break
-    except Exception as e:
-        raise ValueError(e)
-        # print('error------'*15)
+# for symbol in pd.read_csv('ind_nifty200list.csv')['Symbol']:
+#     # if 'infy' not in symbol.lower():
+#     #     continue
+#     try:
+#         # print('I am here Draw some good volume surge graphs')
+#         token = utils.get_token(exchange, symbol + '-EQ')
+#         orgdf = dataset.get_data(stream, 'NSE', symbol, token, start_date, end_date, interval)   
+#         levelsdf = find_previous_levels(orgdf.copy())
+#         levelsdf['day'] = levelsdf['timestamp'].dt.date
+#         mystrategy = High_volume_surge_on_day(orgdf.copy(), 'buy', symbol = symbol, save_trade = save_image_tmp,levelsdf = levelsdf)
+#         results = mystrategy.run()
+#         # break\
+#     except Exception as e:
+#         raise ValueError(e)
+#         # print('error------'*15)
 
     
 
+# df = pd.DataFrame(all_results)
+# df.to_csv('allresults.csv', index = False)
+# print(df)
+import json
+sectors = None
+with open("index_stock.json", "r") as f:
+    sectors = json.load(f)
+
+for sector, stocks in sectors.items(): 
+    interval = '5min'
+    print(sector)
+    token = utils.get_token_for_index(exchange, sector)
+    if token is None:
+        continue
+    indexdf = dataset.get_data(stream, 'NSE', sector, token, start_date, end_date, interval)
+    indexdf = Indicators.ema(indexdf, 50)   
+
+    indexdf['sectortrend'] = np.where((indexdf['ema_50'] > indexdf['ema_50'].shift(1)) & (indexdf['close'] > indexdf['ema_50']), 1,
+                                      np.where((indexdf['ema_50'] < indexdf['ema_50'].shift(1)) & (indexdf['close'] < indexdf['ema_50']), -1, np.nan))
+    indexdf = indexdf[['timestamp', 'sectortrend']]
+    indexdf['sectortrend'] = indexdf['sectortrend'].shift(1)
+    indexdf['sectortrend'] = indexdf['sectortrend'].ffill()
+    print(indexdf.tail(30))
+    for symbol in stocks:
+        try:
+            token = utils.get_token(exchange, symbol + '-EQ')
+            orgdf = dataset.get_data(stream, 'NSE', symbol, token, start_date, end_date, interval)   
+            levelsdf = find_previous_levels(orgdf.copy())
+            levelsdf['day'] = levelsdf['timestamp'].dt.date
+            orgdf = pd.merge(orgdf, indexdf, on = 'timestamp', how = 'left')
+            mystrategy = High_volume_surge_on_day(orgdf.copy(), 'buy', symbol = symbol, save_trade = save_image_tmp,levelsdf = levelsdf)
+            results = mystrategy.run()
+        except Exception as e:
+            print(e)
+            raise ValueError(e)
+    
 df = pd.DataFrame(all_results)
 df.to_csv('allresults.csv', index = False)
 print(df)

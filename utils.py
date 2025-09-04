@@ -60,7 +60,18 @@ def get_token(exchange, symbol):
             return scrip.get('token')
     return None
 
+def get_token_for_index(exchange, symbol):
+    if not os.path.exists(master_token_file):
+        download_scrip_master()
+    global master_token_list
+    if master_token_list is None:
+        with open(master_token_file, 'r') as file:
+            master_token_list = json.load(file)
 
+    for scrip in master_token_list:
+        if (scrip.get('name') == symbol) and (scrip.get('exch_seg') == 'NSE') and (scrip.get('instrumenttype') == 'AMXIDX'):
+            return scrip.get('token')
+    return None
 
 def get_dates(startdate, enddate):
     startdate = pd.to_datetime(startdate)

@@ -6,7 +6,7 @@ def trade_summary_with_plots(df):
     summary = {}
     summary["total_trades"] = len(df)
     df['netrr'] = np.where(df['maxrr']<1, -1, 
-                           np.where(df['maxrr']>2, 2, df['rr']))
+                           np.where(df['maxrr']>30, 30, df['rr']))
     print(df.head(50))
 
     summary["winning_trades"] = (df["netrr"] >= 0).sum()
@@ -20,17 +20,14 @@ def trade_summary_with_plots(df):
     df["cum_rr"] = df["netrr"].cumsum()
 
     fig, axs = plt.subplots(3, 1, figsize=(10, 12))
-
     df["cum_rr"].plot(ax=axs[0], title="Cumulative RR", color="blue")
     axs[0].axhline(0, color="black", linestyle="--")
-
     df["netrr"].plot(kind="bar", ax=axs[1], title="Trade Results (RR)", color=df["netrr"].apply(lambda x: "green" if x > 0 else "red"))
-
     labels = ["Wins", "Losses", "Breakeven"]
     sizes = [summary["winning_trades"], summary["losing_trades"], summary["breakeven_trades"]]
+    
     axs[2].pie(sizes, labels=labels, autopct="%1.1f%%", startangle=90, colors=["green", "red", "gray"])
     axs[2].set_title("Win/Loss Distribution")
-
     plt.tight_layout()
     plt.show()
 
