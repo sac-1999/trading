@@ -35,6 +35,7 @@ s_r_timeframe = '30min'
 level_window = 5  
 maxnumber_of_levels = 5
 save_by_stock = False
+draw_levels = False
 
 
 class High_volume_surge_on_day(strategy.BaseStrategy):
@@ -199,20 +200,39 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         # df['rule2'] = df['rule1'] & (df['stochk_9_3'] > df['stochk_9_3'].shift(1)) & (df['stochk_9_3'].shift(1) < df['stochk_9_3'].shift(2)) & (df['stochk_14_3'] > df['stochk_14_3'].shift(1)) & (df['stochk_14_3'].shift(1) < df['stochk_14_3'].shift(2))
         # df['breakout'] = (df['rule2']) & (df['time'] <= pd.to_datetime('11:00').time()) & (df['time'] >= pd.to_datetime('09:30').time()) 
 
-        df['ema_failed_11'] = np.where(df['close'] < df['ema_11'], 1, 0)
-        df['ema_failed_11'] = df['ema_failed_11'].cumsum()
-        df['ema_failed_21'] = np.where(df['close'] < df['ema_21'], 1, 0)
-        df['ema_failed_21'] = df['ema_failed_21'].cumsum()
 
+        ### this is for it 
+        # df['stocktrend'] = np.where(((df['ema_21'] > df['ema_21'].shift(2)) & 
+        #                             (df['ema_11'] > df['ema_11'].shift(2)) & 
+        #                             (df['stochk_14_3']>df['stochk_14_3'].shift(1)) &
+        #                             (df['stochk_9_3']>df['stochk_9_3'].shift(1)) &
+        #                             (df['stochk_60_3']>60) &
+        #                             (df['ema_50'] > df['ema_50'].shift(2)) &
+        #                             (df['low'] > df['ema_50']) &
+        #                             (df['close'] > df['high'].shift(1)) &
+        #                             ((df['sectortrend'] == 1))), 1, 0)
+
+        df['stocktrend'] = np.where(((df['ema_21'] > df['ema_21'].shift(2)) & 
+                            (df['ema_11'] > df['ema_11'].shift(2)) & 
+                            (df['stochk_14_3']>df['stochk_14_3'].shift(1)) &
+                            (df['stochk_9_3']>df['stochk_9_3'].shift(1)) &
+                            (df['stochk_60_3']>65) &
+                            (df['ema_50'] > df['ema_50'].shift(2)) &
+                            (df['low'] > df['ema_50']) &
+                            (df['close'] > df['high'].shift(1)) &
+                            ((df['sectortrend'] == 1))), 1, 0)
+
+        # df['ema_failed_11'] = np.where(df['close'] < df['ema_11'], 1, 0)
+        # df['ema_failed_11'] = df['ema_failed_11'].cumsum()
+        # df['ema_failed_21'] = np.where(df['close'] < df['ema_21'], 1, 0)
+        # df['ema_failed_21'] = df['ema_failed_21'].cumsum()
         # df['stochk_9_3_mean'] = df['stochk_9_3'].rolling(window=3, min_periods=1).mean()
         # df['stochk_14_3_mean'] = df['stochk_14_3'].rolling(window=2, min_periods=1).mean()
 
 
-        rule1 = (df['ema_failed_11'].shift(2) <= 1) & (df['close'] > df['high'].shift(1)) & (df['low'] <= df['ema_11']) & (df['close'] > df['ema_11'])  &  (df['close'] > df['ema_50']) & (df['sectortrend'] == 1) & (df['ema_50'] > df['ema_50'].shift(1)) & (df['ema_11'] > df['ema_11'].shift(1))
-        rule2 = (df['ema_failed_21'].shift(2) <= 1) & (df['close'] > df['high'].shift(1)) & (df['low'] <= df['ema_21']) & (df['close'] > df['ema_21'])  & (df['close'] > df['ema_50']) & (df['sectortrend'] == 1) & (df['ema_50'] > df['ema_50'].shift(1)) & (df['ema_21'] > df['ema_21'].shift(1))
-        # volumerule = ((df['volume'] > df['volume'].shift(1)) & (df['volume'] > df['volume_mean'])) | ((df['volume'].shift(1) > df['volume'].shift(2)) & (df['volume'].shift(1) > df['volume_mean'].shift(1)))
-        df['breakout'] = (rule1 | rule2) & (df['time'] >= pd.to_datetime('09:50').time()) & (df['time'] <= pd.to_datetime('11:00').time()) 
-
+        rule1 = (df['low'] < df['ema_11']) & (df['close'] > df['ema_11']) 
+        rule2 = (df['low'] < df['ema_21']) & (df['close'] > df['ema_21'])
+        df['breakout'] = (rule1 | rule2) & (df['stocktrend']==1) & (df['time'] >= pd.to_datetime('10:20').time()) & (df['time'] <= pd.to_datetime('11:40').time()) 
         df['sl'] = np.minimum(df['low'] , df['low'].shift(1))
         breakdf = df[df['breakout']]
 
@@ -222,7 +242,8 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         traderow = breakdf.iloc[0]
         entry = traderow['close']
         sl = traderow['sl']                
-        sl = sl - sl * 0.0005
+        sl = sl - sl * 0.001
+        sl = min(sl, entry - entry * 0.003)
         df['sl'] = sl
         df['entry'] = entry
         
@@ -254,6 +275,7 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         df = Indicators.atr(df)
         df = Indicators.stoch(df, 4, 9, 3)
         df = Indicators.stoch(df, 4, 14, 3)
+        df = Indicators.stoch(df, 4, 60, 3)
 
 
         df['day'] = df['timestamp'].dt.date
@@ -266,22 +288,27 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
             if (datetime.today() - timedelta(400)).date() >= pd.to_datetime(x_day).date():
                 prevday = x_day
                 continue
+            if prevday is None:
+                continue
             newprevday = pd.to_datetime(prevday) - timedelta(3)
             prevdaydf = utils.filter_data_by_dates(df.copy(), newprevday, prevday)
             dftmp = utils.filter_data_by_dates(df.copy(), x_day, x_day)
-            levels = self.find_relevant_levels(dftmp, x_day)
-            if levels is not None:
-                if dftmp is not None:
-                    newpeaks , newbottoms = levels
-                    trade = self.trade_strategy(dftmp.copy(), newpeaks, newbottoms, prevdaydf)
-                    if trade is not None:
-                        entry, sl, maxrr, dayendrr = trade
-                        print(entry, sl)
-                        dflist = [dftmp]
-                        dftmp = pd.concat(dflist)
-                        dftmp.reset_index(inplace = True, drop = True)
-                        self.save_image(dftmp, x_day, newpeaks, newbottoms, entry, sl, maxrr, dayendrr)
-                        
+            newpeaks = []
+            newbottoms = []
+            if draw_levels:
+                levels = self.find_relevant_levels(dftmp, x_day)
+                if levels is not None:
+                    if dftmp is not None:
+                        newpeaks , newbottoms = levels
+            trade = self.trade_strategy(dftmp.copy(), newpeaks, newbottoms, prevdaydf)
+            if trade is not None:
+                entry, sl, maxrr, dayendrr = trade
+                print(entry, sl)
+                dflist = [dftmp]
+                dftmp = pd.concat(dflist)
+                dftmp.reset_index(inplace = True, drop = True)
+                self.save_image(dftmp, x_day, newpeaks, newbottoms, entry, sl, maxrr, dayendrr)
+                
             prevday = x_day
 
 
@@ -318,7 +345,23 @@ sectors = None
 with open("index_stock.json", "r") as f:
     sectors = json.load(f)
 
+# token = utils.get_token(exchange, 'Nifty 50')
+# if token is None:
+#     import sys
+#     sys.exit(1)
+# indexdf = dataset.get_data(stream, 'NSE', 'Nifty 50', token, start_date, end_date, interval)
+# indexdf = Indicators.ema(indexdf, 50)   
+# indexdf['sectortrend'] = np.where((indexdf['ema_50'] > indexdf['ema_50'].shift(1)) & (indexdf['close'] > indexdf['ema_50']), 1,
+#                                     np.where((indexdf['ema_50'] < indexdf['ema_50'].shift(1)) & (indexdf['close'] < indexdf['ema_50']), -1, np.nan))
+# indexdf = indexdf[['timestamp', 'sectortrend']]
+# indexdf['sectortrend'] = indexdf['sectortrend'].shift(1)
+# indexdf['sectortrend'] = indexdf['sectortrend'].ffill()
+
+# print(indexdf.tail(30))
+
 for sector, stocks in sectors.items(): 
+    if sector not in "NIFTY AUTO":
+        continue
     interval = '5min'
     print(sector)
     token = utils.get_token_for_index(exchange, sector)
@@ -326,25 +369,34 @@ for sector, stocks in sectors.items():
         continue
     indexdf = dataset.get_data(stream, 'NSE', sector, token, start_date, end_date, interval)
     indexdf = Indicators.ema(indexdf, 50)   
+    indexdf = Indicators.ema(indexdf, 8) 
+    indexdf = Indicators.ema(indexdf, 21) 
+    indexdf = Indicators.stoch(indexdf, 4, 14, 3)  
+    indexdf = Indicators.stoch(indexdf, 4, 9, 3)  
 
-    indexdf['sectortrend'] = np.where((indexdf['ema_50'] > indexdf['ema_50'].shift(1)) & (indexdf['close'] > indexdf['ema_50']), 1,
-                                      np.where((indexdf['ema_50'] < indexdf['ema_50'].shift(1)) & (indexdf['close'] < indexdf['ema_50']), -1, np.nan))
+    indexdf['sectortrend'] = np.where(((indexdf['close'] > indexdf['close'].shift(1)) &
+                                      (indexdf['ema_21'] > indexdf['ema_21'].shift(2)) & 
+                                      (indexdf['ema_8'] > indexdf['ema_8'].shift(2)) & 
+                                      (indexdf['stochk_14_3']>indexdf['stochk_14_3'].shift(1)) &
+                                      (indexdf['ema_50'] > indexdf['ema_50'].shift(2)) &
+                                      ((indexdf['close'] > indexdf['ema_8']) & (indexdf['close'] > indexdf['ema_21']) & (indexdf['low'] > indexdf['ema_50']))),
+                                        1, 0)
     indexdf = indexdf[['timestamp', 'sectortrend']]
-    indexdf['sectortrend'] = indexdf['sectortrend'].shift(1)
-    indexdf['sectortrend'] = indexdf['sectortrend'].ffill()
-    print(indexdf.tail(30))
     for symbol in stocks:
         try:
             token = utils.get_token(exchange, symbol + '-EQ')
-            orgdf = dataset.get_data(stream, 'NSE', symbol, token, start_date, end_date, interval)   
-            levelsdf = find_previous_levels(orgdf.copy())
-            levelsdf['day'] = levelsdf['timestamp'].dt.date
+            orgdf = dataset.get_data(stream, 'NSE', symbol, token, start_date, end_date, interval) 
+            levelsdf = None
+            if draw_levels is None:    
+                levelsdf = find_previous_levels(orgdf.copy())
+                levelsdf['day'] = levelsdf['timestamp'].dt.date
             orgdf = pd.merge(orgdf, indexdf, on = 'timestamp', how = 'left')
             mystrategy = High_volume_surge_on_day(orgdf.copy(), 'buy', symbol = symbol, save_trade = save_image_tmp,levelsdf = levelsdf)
             results = mystrategy.run()
         except Exception as e:
             print(e)
             raise ValueError(e)
+    break
     
 df = pd.DataFrame(all_results)
 df.to_csv('allresults.csv', index = False)
