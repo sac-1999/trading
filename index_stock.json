@@ -11,50 +11,6 @@
     "COFORGE",
     "MPHASIS"
   ],
-  "NIFTY REALTY": [
-    "ANANTRAJ",
-    "PHOENIXLTD",
-    "GODREJPROP",
-    "DLF",
-    "OBEROIRLTY",
-    "RAYMOND",
-    "SOBHA",
-    "BRIGADE",
-    "LODHA",
-    "PRESTIGE"
-  ],
-  "NIFTY FMCG": [
-    "DABUR",
-    "TATACONSUM",
-    "UBL",
-    "EMAMILTD",
-    "COLPAL",
-    "GODREJCP",
-    "NESTLEIND",
-    "MARICO",
-    "RADICO",
-    "HINDUNILVR",
-    "UNITDSPR",
-    "BRITANNIA",
-    "PATANJALI",
-    "VBL",
-    "ITC"
-  ],
-
-  "NIFTY PSU BANK": [
-    "IOB",
-    "PSB",
-    "UCOBANK",
-    "MAHABANK",
-    "CENTRALBK",
-    "CANBK",
-    "BANKBARODA",
-    "BANKINDIA",
-    "PNB",
-    "SBIN",
-    "UNIONBANK",
-    "INDIANB"
-  ],
   "NIFTY PVT BANK": [
     "RBLBANK",
     "IDFCFIRSTB",
@@ -120,35 +76,7 @@
     "AEGISLOG",
     "GUJGASLTD"
   ],
-  "NIFTY MEDIA": [
-    "SUNTV",
-    "SAREGAMA",
-    "ZEEL",
-    "HATHWAY",
-    "TIPSMUSIC",
-    "NETWORK18",
-    "DISHTV",
-    "PVRINOX",
-    "NAZARA",
-    "DBCORP"
-  ],
-  "NIFTY CONSR DURBL": [
-    "BATAINDIA",
-    "VOLTAS",
-    "CERA",
-    "CENTURYPLY",
-    "WHIRLPOOL",
-    "PGEL",
-    "HAVELLS",
-    "AMBER",
-    "TITAN",
-    "DIXON",
-    "KALYANKJIL",
-    "BLUESTARCO",
-    "CROMPTON",
-    "VGUARD",
-    "KAJARIACER"
-  ],
+
   "FINNIFTY": [
     "RECLTD",
     "PFC",

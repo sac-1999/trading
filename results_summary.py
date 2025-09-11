@@ -5,8 +5,9 @@ import numpy as np
 def trade_summary_with_plots(df):
     summary = {}
     summary["total_trades"] = len(df)
-    df['netrr'] = np.where(df['maxrr'] < 1.5, -0.7, 
-                           np.where(df['maxrr'] > 50, 50 , df['rr']))
+    # df['netrr'] = np.where(df['maxrr'] > 3, 3, 
+    #                        np.where(df['maxrr'] < -1.5 , -0.8 , df['rr']))
+    df['netrr'] = np.where(df['maxrr'] > 4.5, 4.5, df['rr'])
 
     summary["winning_trades"] = (df["netrr"] >= 0).sum()
     summary["losing_trades"] = (df["netrr"] < 0).sum()
@@ -15,6 +16,16 @@ def trade_summary_with_plots(df):
     summary["avg_rr"] = round(df["netrr"].mean(), 2)
     summary["best_trade_rr"] = df["netrr"].max()
     summary["worst_trade_rr"] = df["netrr"].min()
+
+    daily_netrr = df.groupby("day")["netrr"].sum().reset_index()
+
+    # round values
+    daily_netrr["netrr"] = daily_netrr["netrr"].round(2)
+
+# cumulative rr across days
+    daily_netrr["cum_rr"] = daily_netrr["netrr"].cumsum().round(2)
+
+
     summary["net_rr"] = round(df["netrr"].sum(), 2)
     df["cum_rr"] = df["netrr"].cumsum()
 
@@ -51,6 +62,7 @@ def trade_summary_with_plots(df):
 if __name__ == "__main__":
     df = pd.read_csv('allresults.csv')
     df = df.sort_values(by="timestamp").reset_index(drop=True)
-    print(df)
+    # df = df.head(150)
+    # print(df)
     summary, df = trade_summary_with_plots(df)
     print(summary)

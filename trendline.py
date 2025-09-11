@@ -228,6 +228,7 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         data['rr'] = dayendrr
         all_results.append(data)
         return (entry, sl, maxrr, dayendrr)
+        
 
     def apply_strategy(self):   
         df = self.df.copy()
