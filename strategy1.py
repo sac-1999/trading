@@ -35,8 +35,8 @@ topgainers_losers['timestamp'] = pd.to_datetime(topgainers_losers['timestamp'])
 stream = CandleStream()
 
 exchange = 'NSE'
-start_date = datetime(2025, 7, 1, 9, 10)
-end_date = datetime(2025, 9, 12, 9, 10)
+start_date = datetime(2025, 1, 1, 9, 10)
+end_date = datetime(2025, 9, 13, 9, 10)
 interval = "10min"
 all_results = []
 save_image_tmp = True
@@ -202,69 +202,127 @@ class High_volume_surge_on_day(strategy.BaseStrategy):
         return df 
     
     def trade_strategy(self, df, newpeaks, newbottoms, prevdaydf):
-        df = utils.filter_by_time(df, '9:20', '15:00')
-        df.reset_index(inplace = True, drop = True)
-        df['ema_9failed'] = df['ema_9'] < df['ema_9'].shift(1)
-        df['ema_21failed'] = df['ema_21'] < df['ema_21'].shift(1)
-        df['ema_9failed'] = df['ema_9failed'].cummax()
-        df['ema_21failed'] = df['ema_21failed'].cummax()
-        df['rulefailed'] = df['ema_21failed'] | df['ema_9failed'].shift(1)
-        df['bestclose'] = (df['close'] > df['high'].shift(1)) & (df['low'] < df['low'].shift(1)) & ((df['low']<=df['ema_9'])) & (df['close'] > df['ema_9'])
-        df['emaclose'] = (df['close'] > df['high'].shift(1)) & (df['low'] < df['ema_9'].shift(1)) 
-        
-        df['breakout'] =  (df['bestclose'])  & (df['rulefailed'].shift(1) == False) & (df['time'] <= pd.to_datetime('11:30').time()) & (df['time'] >= pd.to_datetime('09:40').time())
-        df['sl'] = df['low']
+        if self.trade_type == "buy":
+            df = utils.filter_by_time(df, '9:35', '15:10')
+            df.reset_index(inplace = True, drop = True)
+            df['ema_9failed'] = df['ema_9'] < df['ema_9'].shift(1)
+            df['ema_21failed'] = df['ema_21'] < df['ema_21'].shift(1)
+            df['ema_9failed'] = df['ema_9failed'].cummax()
+            df['ema_21failed'] = df['ema_21failed'].cummax()
+            df['rulefailed'] = df['ema_21failed'] | df['ema_9failed'].shift(1)
+            df['bestclose'] = (df['close'] > df['high'].shift(1)) & (df['low'] < df['low'].shift(1)) & ((df['low']<=df['ema_9'])) & (df['close'] > df['ema_9'])
+            df['emaclose'] = (df['close'] > df['high'].shift(1)) & (df['low'] < df['ema_9'].shift(1)) 
+            
+            df['breakout'] =  (df['bestclose'])  & (df['rulefailed'].shift(1) == False) & (df['time'] <= pd.to_datetime('11:30').time()) & (df['time'] >= pd.to_datetime('09:40').time())
+            df['sl'] = df['low']
 
-        # if len(df)==0:
-        #     return 
-        # topmovers = df.iloc[0]['sorted_changes'][:25]
-        # topmovers = [col[0] for col in topmovers if (col[1]>0)] 
+            # if len(df)==0:
+            #     return 
+            # topmovers = df.iloc[0]['sorted_changes'][:25]
+            # topmovers = [col[0] for col in topmovers if (col[1]>0)] 
+            
+            # print(topmovers)
+            # if self.kwargs.get('symbol') not in topmovers:
+            #     return 
         
-        # print(topmovers)
-        # if self.kwargs.get('symbol') not in topmovers:
-        #     return 
-     
-        breakdf = df[df['breakout']]
-        
-        if len(breakdf) == 0:
-            return 
+            breakdf = df[df['breakout']]
+            
+            if len(breakdf) == 0:
+                return 
 
-        traderow = breakdf.iloc[0]
-        entry = traderow['close']
-        sl = traderow['sl']                
-        # sl = sl - sl * 0.001
-        # sl = min(sl, entry - entry * 0.0035)
-        df['sl'] = sl
-        df['entry'] = entry
+            traderow = breakdf.iloc[0]
+            entry = traderow['close']
+            sl = traderow['sl']                
+            # sl = sl - sl * 0.001
+            # sl = min(sl, entry - entry * 0.0035)
+            df['sl'] = sl
+            df['entry'] = entry
 
-        futdf = df[df['time'] > traderow['time']].copy()
-        if len(futdf)==0:
-            return
-        futdf['rr'] = round(((futdf['high'] - futdf['entry'])/(futdf['entry'] - futdf['sl'])), 1) 
-        futdf['dayendrr'] = round(((futdf['close'] - futdf['entry'])/(futdf['entry'] - futdf['sl'])), 1) 
-        futdf['maxrr'] = futdf['rr'].cummax()
-        futdf['slhit'] = futdf['low'] < futdf['sl']
-        futdf['slhit'] = futdf['slhit'].cummax()
-        maxrr = 0
-        dayendrr = -1
-        if len(futdf[futdf['slhit']]) > 0:
+            futdf = df[df['time'] > traderow['time']].copy()
+            if len(futdf)==0:
+                return
+            futdf['rr'] = round(((futdf['high'] - futdf['entry'])/(futdf['entry'] - futdf['sl'])), 1) 
+            futdf['dayendrr'] = round(((futdf['close'] - futdf['entry'])/(futdf['entry'] - futdf['sl'])), 1) 
+            futdf['maxrr'] = futdf['rr'].cummax()
+            futdf['slhit'] = futdf['low'] < futdf['sl']
+            futdf['slhit'] = futdf['slhit'].cummax()
+            maxrr = 0
             dayendrr = -1
-            futdf = futdf[futdf['slhit'] == False]
-            if len(futdf) > 0:
-                maxrr = futdf['maxrr'].max()
+            if len(futdf[futdf['slhit']]) > 0:
+                dayendrr = -1
+                futdf = futdf[futdf['slhit'] == False]
+                if len(futdf) > 0:
+                    maxrr = futdf['maxrr'].max()
 
 
-        else:
-            futdf = futdf[futdf['slhit'] == False]
-            dayendrr = futdf.iloc[-1]['dayendrr']
-            if len(futdf) > 0:
-                maxrr = futdf['maxrr'].max()
+            else:
+                futdf = futdf[futdf['slhit'] == False]
+                dayendrr = futdf.iloc[-1]['dayendrr']
+                if len(futdf) > 0:
+                    maxrr = futdf['maxrr'].max()
 
-        data = traderow.to_dict()
-        data['maxrr'] = maxrr
-        data['rr'] = dayendrr
-        all_results.append(data)
-        return (entry, sl, maxrr, dayendrr)
+            data = traderow.to_dict()
+            data['maxrr'] = maxrr
+            data['rr'] = dayendrr
+            all_results.append(data)
+            return (entry, sl, maxrr, dayendrr)
+        
+        if self.trade_type == "sell":
+            df = utils.filter_by_time(df, '9:05', '15:10')
+            df.reset_index(inplace = True, drop = True)
+            df['ema_9failed'] = df['ema_9'] > df['ema_9'].shift(1)
+            df['ema_21failed'] = df['ema_21'] > df['ema_21'].shift(1)
+            df['ema_9failed'] = df['ema_9failed'].cummax()
+            df['ema_21failed'] = df['ema_21failed'].cummax()
+            df['rulefailed'] = df['ema_21failed'] | df['ema_9failed'].shift(1)
+            df['bestclose'] = (df['close'] < df['low'].shift(1)) & (df['high'] < df['high'].shift(1)) & ((df['high']>=df['ema_9'])) & (df['close'] < df['ema_9'])
+            df['emaclose'] = (df['close'] > df['high'].shift(1)) & (df['low'] < df['ema_9'].shift(1)) 
+            
+            df['breakout'] =  (df['bestclose'])  & (df['rulefailed'].shift(1) == False) & (df['time'] <= pd.to_datetime('11:30').time()) & (df['time'] >= pd.to_datetime('09:40').time())
+            df['sl'] = df['high']
+            breakdf = df[df['breakout']]
+            
+            if len(breakdf) == 0:
+                return 
+
+            traderow = breakdf.iloc[0]
+            entry = traderow['close']
+            sl = traderow['sl']                
+            # sl = sl - sl * 0.001
+            # sl = min(sl, entry - entry * 0.0035)
+            df['sl'] = sl
+            df['entry'] = entry
+
+            futdf = df[df['time'] > traderow['time']].copy()
+            if len(futdf)==0:
+                return
+            futdf['rr'] = round(((futdf['entry'] - futdf['low'])/(futdf['sl'] - futdf['entry'])), 1) 
+            futdf['dayendrr'] = round(((futdf['entry'] - futdf['close'])/(futdf['sl'] - futdf['entry'])), 1) 
+            futdf['maxrr'] = futdf['rr'].cummax()
+            futdf['slhit'] = futdf['high'] > futdf['sl']
+            futdf['slhit'] = futdf['slhit'].cummax()
+            maxrr = 0
+            dayendrr = -1
+            if len(futdf[futdf['slhit']]) > 0:
+                dayendrr = -1
+                futdf = futdf[futdf['slhit'] == False]
+                if len(futdf) > 0:
+                    maxrr = futdf['maxrr'].max()
+
+
+            else:
+                futdf = futdf[futdf['slhit'] == False]
+                dayendrr = futdf.iloc[-1]['dayendrr']
+                if len(futdf) > 0:
+                    maxrr = futdf['maxrr'].max()
+
+            data = traderow.to_dict()
+            data['maxrr'] = maxrr
+            data['rr'] = dayendrr
+            all_results.append(data)
+            return (entry, sl, maxrr, dayendrr)
+        
+    
 
 
     def apply_strategy(self):   
@@ -341,7 +399,7 @@ if token is None:
 # niftydf = dataset.get_data(stream, 'NSE', sector, token, start_date, end_date, interval)  
 # print(topgainers_losers.tail(50))
 while(True):
-    for symbol in pd.read_csv('ind_nifty200list.csv')['Symbol']:
+    for symbol in pd.read_csv('ind_nifty50list.csv')['Symbol']:
         try:
             token = utils.get_token(exchange, symbol + '-EQ')
             orgdf = dataset.get_data(stream, 'NSE', symbol, token, start_date, end_date, interval) 
@@ -352,7 +410,9 @@ while(True):
                 levelsdf = find_previous_levels(orgdf.copy())
                 levelsdf['day'] = levelsdf['timestamp'].dt.date
 
-            mystrategy = High_volume_surge_on_day(orgdf.copy(), 'buy', symbol = symbol, save_trade = save_image_tmp,levelsdf = levelsdf)
+            # mystrategy = High_volume_surge_on_day(orgdf.copy(), 'buy', symbol = symbol, save_trade = save_image_tmp,levelsdf = levelsdf)
+            # results = mystrategy.run()
+            mystrategy = High_volume_surge_on_day(orgdf.copy(), 'sell', symbol = symbol, save_trade = save_image_tmp,levelsdf = levelsdf)
             results = mystrategy.run()
         
 
@@ -360,6 +420,8 @@ while(True):
 
         except Exception as e:
             raise ValueError(e)
+    if not islive:
+        break
 
 
 df = pd.DataFrame(all_results)
