@@ -5,9 +5,35 @@ import numpy as np
 def trade_summary_with_plots(df):
     summary = {}
     summary["total_trades"] = len(df)
+
+    # df['netrr'] = np.where(df['maxrr'] > 3, 3,
+    #                        np.where(df['maxrr']>2, 0, df['']))
+
     # df['netrr'] = np.where(df['maxrr'] > 3, 3, 
     #                        np.where(df['maxrr'] < -1.5 , -0.8 , df['rr']))
-    df['netrr'] = np.where(df['maxrr'] > 4.5, 4.5, df['rr'])
+
+    dflist = []
+    for d in list(df['day'].unique()):
+        dftmp = df[df['day'] == d].copy()
+        dftmp = dftmp.sort_values(by="timestamp").reset_index(drop=True)
+        dftmp = dftmp.head(3)
+        dflist.append(dftmp)
+
+    df = pd.concat(dflist, ignore_index=True)
+    
+    df['zero'] = 0
+    # df['netrr'] = np.where(df['maxrr'] > 1.5, np.maximum(df['zero'], df['rr']), df['rr'])
+    df['netrr'] = np.where(df['maxrr'] < 1.5,df['rr'], np.maximum(df['zero'], df['rr']))
+    # print(df.head(50))
+
+    # df['netrr'] = np.where()
+
+    # df['netrr'] = np.where(df['maxrr'] < 1.5, df['rr'],
+    #                        np.where(df['rr'] < 0, 0, df['rr']))
+    
+    # df['netrr'] = np.where(df['maxrr'] > 40, 40 , df['rr'])
+    for rr in range(1,5):
+        print(f"Accuracy for rr : {rr} => {round(len(df[df['maxrr'] > rr])/len(df)*100,0)}")
 
     summary["winning_trades"] = (df["netrr"] >= 0).sum()
     summary["losing_trades"] = (df["netrr"] < 0).sum()
@@ -53,8 +79,13 @@ def trade_summary_with_plots(df):
     axs[3].set_ylabel("Trades")
     axs[3].set_xlabel("Day")
 
+
+    print(df)
+
     plt.tight_layout()
     plt.show()
+
+
 
     return summary, df
 

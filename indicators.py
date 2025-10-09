@@ -81,11 +81,18 @@ class Indicators:
     def macd(data, fast=12, slow=26, signal=9, feature=False, featurenumber=-1):
         if feature and featurenumber == -1:
             raise ValueError("[Error [macd]] featurenumber must be >= 0")
-        macd = ta.macd(data['close'], fast=fast, slow=slow, signal=signal)
-        colname = f"feature_{featurenumber}" if feature else f"macd_{fast}_{slow}_{signal}"
+        macd_df = ta.macd(data['close'], fast=fast, slow=slow, signal=signal)
+        macd_df['macd'] = macd_df[f"MACD_{fast}_{slow}_{signal}"]
+        macd_df['signal'] = macd_df[f"MACDs_{fast}_{slow}_{signal}"]
+        colname = f"macd_{fast}_{slow}"
+        
+
         if colname in data.columns:
             raise ValueError(f"[Error [macd]] {colname} already exists")
-        data[colname] = macd[f"MACD_{fast}_{slow}_{signal}"]
+        data[colname] = (macd_df['macd'] > macd_df['signal']).astype(int).replace(0, -1)
+        return data
+    
+       
         return data
 
     @staticmethod

@@ -83,12 +83,14 @@ class AngelOne(Broker):
         "fromdate": startdate.strftime("%Y-%m-%d %H:%M"),
         "todate": enddate.strftime("%Y-%m-%d %H:%M")
         }
-        while(True):
+        retry_count = 0
+        while(retry_count < 10):
             try:
                 res = self.smartapi.getCandleData(historicParam)
                 return res
             except Exception as e:
                 print("Warning : ",str(e))
+                retry_count += 1
                 time.sleep(1)
                 print('retrying after a pause of 1 sec ....')
                 continue
