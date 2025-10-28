@@ -1,7 +1,8 @@
 from telegram import Bot
 
-BOT_TOKEN = "7"
-CHAT_ID = "-"
+
+BOT_TOKEN = "7030049288:AAG8B3upzkm80oDq2QJTd25-K2aG63cfsTM"
+CHAT_ID = "-1002132869398"
 
 import asyncio
 

@@ -16,7 +16,7 @@ def trade_summary_with_plots(df):
     for d in list(df['day'].unique()):
         dftmp = df[df['day'] == d].copy()
         dftmp = dftmp.sort_values(by="timestamp").reset_index(drop=True)
-        dftmp = dftmp.head(3)
+        dftmp = dftmp.head(50)
         dflist.append(dftmp)
 
     df = pd.concat(dflist, ignore_index=True)
@@ -31,7 +31,7 @@ def trade_summary_with_plots(df):
     # df['netrr'] = np.where(df['maxrr'] < 1.5, df['rr'],
     #                        np.where(df['rr'] < 0, 0, df['rr']))
     
-    # df['netrr'] = np.where(df['maxrr'] > 40, 40 , df['rr'])
+    # df['netrr'] = np.where(df['maxrr'] > 2.5, 2.5 , df['rr'])
     for rr in range(1,5):
         print(f"Accuracy for rr : {rr} => {round(len(df[df['maxrr'] > rr])/len(df)*100,0)}")
 

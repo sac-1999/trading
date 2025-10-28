@@ -164,5 +164,76 @@
         "ETERNAL_buy",
         "NMDC_buy",
         "NATIONALUM_buy"
+    ],
+    "2025-10-10": [
+        "BDL_buy",
+        "BEL_buy",
+        "BOSCHLTD_buy",
+        "CANBK_buy",
+        "DABUR_buy",
+        "BRITANNIA_buy",
+        "HINDUNILVR_buy",
+        "ICICIBANK_buy",
+        "HAL_buy",
+        "IRCTC_buy",
+        "INDHOTEL_buy",
+        "KOTAKBANK_buy",
+        "LODHA_buy",
+        "IREDA_buy",
+        "NESTLEIND_buy",
+        "PIIND_buy",
+        "ONGC_buy",
+        "RELIANCE_buy",
+        "SJVN_buy",
+        "MAZDOCK_buy",
+        "SBILIFE_buy",
+        "PNB_buy",
+        "VBL_buy",
+        "MOTHERSON_buy",
+        "WIPRO_buy"
+    ],
+    "2025-10-13": [
+        "BAJFINANCE_buy",
+        "BHARTIHEXA_buy",
+        "BHARTIARTL_buy",
+        "DIVISLAB_buy",
+        "FEDERALBNK_buy"
+    ],
+    "2025-10-14": [
+        "CGPOWER_buy",
+        "CHOLAFIN_buy",
+        "LTIM_buy",
+        "BAJAJ-AUTO_buy",
+        "NAUKRI_buy",
+        "NATIONALUM_buy",
+        "SONACOMS_buy"
+    ],
+    "2025-10-15": [
+        "MAXHEALTH_buy",
+        "ALKEM_buy",
+        "BAJAJ-AUTO_buy",
+        "OLAELEC_buy",
+        "PERSISTENT_buy",
+        "COFORGE_buy",
+        "TVSMOTOR_buy"
+    ],
+    "2025-10-16": [
+        "GRASIM_buy",
+        "IRCTC_buy",
+        "JUBLFOOD_buy",
+        "LODHA_buy",
+        "JSWSTEEL_buy",
+        "CIPLA_buy",
+        "OLAELEC_buy",
+        "NESTLEIND_buy",
+        "ADANIPORTS_buy",
+        "APOLLOTYRE_buy",
+        "DMART_buy",
+        "BAJAJHLDNG_buy"
+    ],
+    "2025-10-17": [
+        "EICHERMOT_buy",
+        "MUTHOOTFIN_buy",
+        "MAXHEALTH_buy"
     ]
 }

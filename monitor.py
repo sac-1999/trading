@@ -40,8 +40,8 @@ topgainers_losers = None
 stream = CandleStream()
 
 exchange = 'NSE'
-start_date = datetime(2025, 9, 20, 9, 10)
-end_date = datetime(2025, 10, 4, 15, 30)
+start_date = datetime(2025, 10, 1, 9, 10)
+end_date = datetime(2025, 10, 20, 15, 30)
 interval = "5min"
 all_results = []
 save_image_tmp =  True
