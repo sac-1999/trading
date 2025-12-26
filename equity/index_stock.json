@@ -1,0 +1,108 @@
+{
+  "NIFTY IT": [
+    "LTIM",
+    "TECHM",
+    "WIPRO",
+    "OFSS",
+    "TCS",
+    "HCLTECH",
+    "INFY",
+    "PERSISTENT",
+    "COFORGE",
+    "MPHASIS"
+  ],
+  "NIFTY PVT BANK": [
+    "RBLBANK",
+    "IDFCFIRSTB",
+    "BANDHANBNK",
+    "YESBANK",
+    "FEDERALBNK",
+    "INDUSINDBK",
+    "AXISBANK",
+    "HDFCBANK",
+    "KOTAKBANK",
+    "ICICIBANK"
+  ],
+  "NIFTY AUTO": [
+    "MRF",
+    "ASHOKLEY",
+    "BALKRISIND",
+    "HEROMOTOCO",
+    "BOSCHLTD",
+    "EICHERMOT",
+    "EXIDEIND",
+    "BHARATFORG",
+    "BAJAJ-AUTO",
+    "TVSMOTOR",
+    "MARUTI",
+    "MOTHERSON",
+    "TATAMOTORS",
+    "M&M",
+    "TIINDIA"
+  ],
+
+  "NIFTY METAL": [
+    "NATIONALUM",
+    "NMDC",
+    "HINDCOPPER",
+    "SAIL",
+    "TATASTEEL",
+    "JINDALSTEL",
+    "JSL",
+    "HINDZINC",
+    "APLAPOLLO",
+    "JSWSTEEL",
+    "HINDALCO",
+    "VEDL",
+    "LLOYDSME",
+    "ADANIENT",
+    "WELCORP"
+  ],
+
+
+
+  "FINNIFTY": [
+    "RECLTD",
+    "PFC",
+    "BAJAJFINSV",
+    "SBILIFE",
+    "ICICIPRULI",
+    "HDFCLIFE",
+    "BAJFINANCE",
+    "MUTHOOTFIN",
+    "SHRIRAMFIN",
+    "JIOFIN",
+    "HDFCAMC",
+    "ICICIGI",
+    "LICHSGFIN",
+    "CHOLAFIN",
+    "SBICARD"
+  ],
+
+  "NIFTY PHARMA": [
+    "ABBOTINDIA",
+    "AJANTPHARM",
+    "MANKIND",
+    "BIOCON",
+    "DIVISLAB",
+    "ZYDUSLIFE",
+    "SUNPHARMA",
+    "NATCOPHARM",
+    "IPCALAB",
+    "LAURUSLABS",
+    "TORNTPHARM",
+    "LUPIN",
+    "GLENMARK",
+    "GLAND",
+    "AUROPHARMA",
+    "JBCHEPHARM",
+    "ALKEM",
+    "CIPLA",
+    "GRANULES",
+    "DRREDDY",
+    "FORTIS",
+    "SYNGENE",
+    "APOLLOHOSP",
+    "MAXHEALTH"
+  ]
+}
