@@ -40,7 +40,7 @@ topgainers_losers = None
 stream = CandleStream()
 
 exchange = 'NSE'
-start_date = datetime(2025, 10, 5, 9, 10)
+start_date = datetime(2025, 10, 20, 9, 10)
 end_date = datetime(2025, 10, 30, 15, 30)
 interval = "5min"
 all_results = []
