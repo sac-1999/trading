@@ -4,17 +4,25 @@ from psycopg2.extras import execute_batch, RealDictCursor
 from datetime import datetime, timedelta
 import time
 from typing import List, Dict, Optional
-
+import os
 # ============================================
 # CONFIGURATION
 # ============================================
 
+# DB_CONFIG = {
+#     "host": "localhost",   # avoid IPv6 (::1) confusion
+#     "port": 5432,          # ✅ MUST match docker-compose
+#     "database": "trading",
+#     "user": "trader",
+#     "password": "admin@123"
+# }
+
 DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'crypto_db',
-    'user': 'postgres',
-    'password': 'ADMIN@123',
-    'port': 5431
+    "host": os.environ["DB_HOST"],   # avoid IPv6 (::1) confusion
+    "port": os.environ["DB_PORT"],          # ✅ MUST match docker-compose
+    "database": os.environ["DB_NAME"],
+    "user": os.environ["DB_USER"],
+    "password": os.environ["DB_PASSWORD"]
 }
 
 # Binance API Configuration
@@ -65,18 +73,16 @@ class BTCDataLoader:
             return
         
         insert_query = """
-        INSERT INTO btc_ohlcv (
-            time, open, high, low, close, volume
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s
-        )
-        ON CONFLICT (time) DO UPDATE SET
-            open = EXCLUDED.open,
-            high = EXCLUDED.high,
-            low = EXCLUDED.low,
-            close = EXCLUDED.close,
-            volume = EXCLUDED.volume
-        """
+            INSERT INTO stock_ohlcv (
+                time, symbol, timeframe, open, high, low, close, volume
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (symbol, timeframe, time) DO UPDATE SET
+                open = EXCLUDED.open,
+                high = EXCLUDED.high,
+                low = EXCLUDED.low,
+                close = EXCLUDED.close,
+                volume = EXCLUDED.volume;
+            """
         
         # Prepare data
         data = []
@@ -85,6 +91,8 @@ class BTCDataLoader:
             timestamp = candle['time']
             data.append((
                 timestamp,  # time
+                str(candle['symbol']),
+                str(candle['timeframe']),
                 float(candle['open']),  # open
                 float(candle['high']),  # high
                 float(candle['low']),  # low
@@ -151,42 +159,54 @@ class BTCDataLoader:
         self.conn.close()
         print("\n✓ Database connection closed")
 
+    def get_candles(self, symbol, timeframe) -> List[Dict]:
+        if timeframe != '1m':
+            query = f"""
+            SELECT
+                time,
+                symbol,
+                timeframe,
+                open,
+                high,
+                low,
+                close,
+                volume
+            FROM stock_ohlcv
+            WHERE symbol = %s
+            AND timeframe = %s
+            ORDER BY time ASC;
+            """
 
+        if timeframe != '1m':
+            query = f"""
+            SELECT
+                time,
+                symbol,
+                open,
+                high,
+                low,
+                close,
+                volume
+            FROM stock_ohlcv_{timeframe}
+            ORDER BY time ASC;
+            """
 
-    def get_candles(
-        self,
-        ) -> List[Dict]:
-        """
-        Get candles from database
-        
-        Args:
-            symbol: Trading pair (e.g., 'BTCUSDT')
-            timeframe: Candle timeframe (e.g., '1h')
-            limit: Number of candles to return
-            start_time: Optional start datetime
-            end_time: Optional end datetime
-        
-        Returns:
-            List of candle dictionaries
-        """
-        query = """
-        SELECT 
-            *
-        FROM btc_ohlcv
-        """
-        params = []
+        params = (symbol, timeframe)
+
         self.dict_cursor.execute(query, params)
         results = self.dict_cursor.fetchall()
-        # return results
-        # Convert to JSON-serializable format
+
+        print(results)
+
         return [
             {
                 'time': row['time'].isoformat(),
+                'symbol': row['symbol'],
                 'open': float(row['open']),
                 'high': float(row['high']),
                 'low': float(row['low']),
                 'close': float(row['close']),
-                'volume': float(row['volume'])
+                'volume': int(row['volume'])
             }
             for row in results
         ]

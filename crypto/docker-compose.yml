@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: trading-timescaledb
+
+    restart: unless-stopped
+
+    ports:
+      - "5434:5432" # avoid clashing with local postgres
+
+    environment:
+      POSTGRES_DB: trading
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: admin@123
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    command: >
+      postgres
+      -c shared_preload_libraries=timescaledb
+      -c timescaledb.telemetry_level=off
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader -d trading"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  candle-sync:
+    build: .
+    container_name: candle-sync
+    # restart: unless-stopped
+
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: trading
+      DB_USER: trader
+      DB_PASSWORD: admin@123
+
+    volumes:
+      - ./src:/app/src
+      - ./myenvs:/app/myenvs
+
+  backtest:
+    build:
+      context: .
+      dockerfile: dockerfile_backtest
+
+    container_name: backtest
+    # restart: unless-stopped
+
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: trading
+      DB_USER: trader
+      DB_PASSWORD: admin@123
+
+    volumes:
+      - ./src:/app/src
+      - ./myenvs:/app/myenvs
+
+volumes:
+  pgdata:

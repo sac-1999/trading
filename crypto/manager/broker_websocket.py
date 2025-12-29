@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from crypto.logger_config import get_logger
+from crypto.src.logger_config import get_logger
 logger = get_logger(__name__)
 
 class DeltaWebSocketClient:

@@ -1,0 +1,9 @@
+FROM astral/uv:python3.11-trixie
+
+WORKDIR /app
+COPY myenvs/pyproject.toml myenvs/uv.lock ./
+RUN uv sync --frozen 
+ENV PYTHONPATH=/app
+WORKDIR /app/src
+CMD ["uv", "run", "sync.py"]
+# CMD ["sleep", "infinity"]

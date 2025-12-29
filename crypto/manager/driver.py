@@ -1,7 +1,7 @@
-from crypto.broker import DeltaExchange
+from crypto.src.broker import DeltaExchange
 from crypto.manager.broker_websocket import DeltaWebSocketClient
 from dotenv import load_dotenv
-from crypto.logger_config import get_logger
+from crypto.src.logger_config import get_logger
 import os 
 import time
 logger = get_logger(__name__)
