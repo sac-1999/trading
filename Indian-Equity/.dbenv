@@ -1,0 +1,5 @@
+POSTGRES_DB=equity-trading
+POSTGRES_USER=equity-trader
+POSTGRES_PASSWORD=admin@123
+PG_HOST=localhost
+PORT=5435
