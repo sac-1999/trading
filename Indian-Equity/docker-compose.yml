@@ -28,5 +28,26 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image : redis/redis-stack:latest
+    container_name : equity-trading-redisstack
+    restart : unless-stopped
+    ports : 
+      - "6379:6379"
+      - "8001:8001"
+    
+    volumes :
+      - redisdata:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+
+    command: ["redis-stack-server", "/usr/local/etc/redis/redis.conf"]
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   pgdata:
+  redisdata:

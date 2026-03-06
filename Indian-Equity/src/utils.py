@@ -59,6 +59,47 @@ def get_token(exchange, symbol):
             return scrip.get('token')
     return None
 
+def get_index_token_mapping():
+    global master_token_list
+    def is_index(s):
+        itype = (s.get("instrumenttype") or "").upper()
+        name  = (s.get('symbol') or "").upper()
+        return itype in {"AMXIDX"} and ('NIFTY' in name)
+    if master_token_list is None:
+        with open(master_token_file, 'r') as file:
+            master_token_list = json.load(file)
+
+    indices = [s for s in master_token_list if is_index(s)]
+    index_to_token = {}
+    token_to_index = {}
+    valid_indices = ['Nifty 50',
+                    'Nifty IT',
+                    'Nifty Bank',
+                    'Nifty 100',
+                    'Nifty Realty',
+                    'Nifty Infra',
+                    'Nifty Energy',
+                    'Nifty FMCG',
+                    'Nifty MNC',
+                    'Nifty Pharma',
+                    'Nifty PSE',
+                    'Nifty PSU Bank',
+                    'Nifty Serv Sector',
+                    'Nifty Auto',
+                    'Nifty Metal',
+                    'Nifty Media',
+                    'Nifty Commodities',
+                    'Nifty Consumption',
+                    'Nifty Fin Service',
+                    'Nifty Pvt Bank']
+
+    for indice in  indices:
+        if indice['symbol'] in valid_indices:
+            index_to_token[indice['symbol']] = indice['token']
+            token_to_index[indice['token']] = indice['symbol']
+    return index_to_token, token_to_index
+
+
 def get_token_for_index(exchange, symbol):
     if not os.path.exists(master_token_file):
         download_scrip_master()

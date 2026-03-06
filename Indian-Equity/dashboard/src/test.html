@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Stream Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --fg: #c5c6c7;
+      --accent: #66fcf1;
+      --panel: #1f2833;
+      --border: #45a29e;
+      --red: #ff6b6b;
+      --green: #51cf66;
+    }
+    body { margin: 0; font-family: system-ui, Arial, sans-serif; background: var(--bg); color: var(--fg); }
+    header { padding: 1rem; border-bottom: 1px solid var(--border); }
+    h1 { margin: 0 0 .25rem 0; color: var(--accent); font-size: 1.25rem; }
+    .status { font-size: .9rem; opacity: .85; }
+    main { padding: 1rem; }
+    .controls {
+      display: grid; grid-template-columns: 1fr auto auto auto auto; gap: .5rem; align-items: center;
+      margin-bottom: .75rem;
+    }
+    input[type="text"], input[type="url"], select, button {
+      padding: .5rem .6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+    }
+    button { cursor: pointer; }
+    button.primary { border-color: var(--accent); color: var(--accent); }
+    #logs {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+      padding: .75rem; height: 65vh; overflow-y: auto; white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    .line { margin: 0 0 6px 0; }
+    .tag { color: var(--accent); }
+    .err { color: var(--red); }
+    .ok { color: var(--green); }
+    .meta { opacity: .7; font-size: .85em; }
+    .pill { display:inline-block; padding:0 .4rem; border:1px solid var(--border); border-radius: 999px; margin-left:.4rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Live Stream Viewer</h1>
+    <div class="status" id="status">Idle</div>
+  </header>
+
+  <main>
+    <div class="controls">
+      <input id="url" type="url" placeholder="Stream URL" />
+      <input id="filter" type="text" placeholder="Filter by symbol (optional)" />
+      <button id="connect" class="primary">Connect</button>
+      <button id="pause">Pause</button>
+      <button id="clear">Clear</button>
+      <button id="download">Download</button>
+    </div>
+
+    <div id="logs" aria-live="polite" aria-atomic="false"></div>
+  </main>
+
+  <script>
+    // --- Configuration -------------------------------------------------------
+    const DEFAULT_STREAM_URL = 'http://127.0.0.1:5000/stream'; // change if needed
+
+    // --- State ---------------------------------------------------------------
+    let es = null;
+    let paused = false;
+    let bufferForDownload = [];
+
+    // --- DOM references ------------------------------------------------------
+    const statusEl = document.getElementById('status');
+    const logsEl   = document.getElementById('logs');
+    const urlEl    = document.getElementById('url');
+    const filterEl = document.getElementById('filter');
+    const connectBtn = document.getElementById('connect');
+    const pauseBtn   = document.getElementById('pause');
+    const clearBtn   = document.getElementById('clear');
+    const downloadBtn= document.getElementById('download');
+
+    // --- Helpers -------------------------------------------------------------
+    function qsParam(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+
+    function setStatus(text, ok = true) {
+      statusEl.textContent = text;
+      statusEl.className = ok ? 'status ok' : 'status err';
+    }
+
+    function appendLine(type, text, meta = '') {
+      if (paused) return;
+      const el = document.createElement('div');
+      el.className = 'line';
+      el.innerHTML = `<span class="tag">[${type}]</span> ${text}${meta ? ' <span class="meta pill">' + meta + '</span>' : ''}`;
+      logsEl.appendChild(el);
+      logsEl.scrollTop = logsEl.scrollHeight;
+      bufferForDownload.push(`[${type}] ${text}${meta ? ' (' + meta + ')' : ''}`);
+    }
+
+    function safeJSON(text) {
+      try { return JSON.parse(text); } catch { return null; }
+    }
+
+    function formatPayload(obj) {
+      // Customize for your schema
+      const sym = obj?.symbol ?? 'unknown';
+      const ts  = obj?.ts ?? null;
+      // Example: show last_day_state OHLC if present
+      const s   = obj?.last_day_state;
+      let summary = s ? `O:${s.open} H:${s.high} L:${s.low} C:${s.close}` : '';
+      // Example: curr_day_state [open, low, close, high, change%]
+      const c   = obj?.curr_day_state;
+      if (!summary && Array.isArray(c) && c.length >= 5) {
+        summary = `O:${c[0]} L:${c[1]} C:${c[2]} H:${c[3]} Δ%:${c[4]}`;
+      }
+      return { sym, ts, summary };
+    }
+
+    function shouldShow(obj, filterText) {
+      if (!filterText) return true;
+      const sym = (obj?.symbol ?? '').toString().toLowerCase();
+      return sym.includes(filterText.toLowerCase());
+    }
+
+    function connect(url) {
+      // Close previous connection if any
+      if (es) {
+        try { es.close(); } catch {}
+        es = null;
+      }
+
+      // Create new EventSource
+      es = new EventSource(url, { withCredentials: false });
+      setStatus('Connecting…');
+
+      es.onopen = () => setStatus('Connected');
+
+      es.onerror = (e) => {
+        setStatus('Disconnected (error). Browser will retry…', false);
+        // Note: EventSource auto-reconnects; keep the instance
+      };
+
+      // Default events (no `event:` line)
+      es.onmessage = (e) => {
+        const obj = safeJSON(e.data);
+        if (!obj) return appendLine('message', e.data);
+        if (!shouldShow(obj, filterEl.value)) return;
+        const { sym, ts, summary } = formatPayload(obj);
+        appendLine('message', `${sym} ${summary}`, ts ? `ts:${ts}` : '');
+      };
+
+      // If your server standardized to `event: update`, handle it here
+      es.addEventListener('update', (e) => {
+        const obj = safeJSON(e.data);
+        if (!obj) return appendLine('update', e.data);
+        if (!shouldShow(obj, filterEl.value)) return;
+        const { sym, ts, summary } = formatPayload(obj);
+        appendLine('update', `${sym} ${summary}`, ts ? `ts:${ts}` : '');
+      });
+
+      // Optional: listen for keepalive/heartbeat comments if you emit custom named events
+      // Note: EventSource does not deliver comment lines (": keepalive") to JS,
+      // they stay in the stream; this is fine for connection health.
+    }
+
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 0);
+    }
+
+    // --- Wire up controls ----------------------------------------------------
+    connectBtn.addEventListener('click', () => {
+      const url = urlEl.value.trim() || DEFAULT_STREAM_URL;
+      connect(url);
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      paused = !paused;
+      pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+    });
+
+    clearBtn.addEventListener('click', () => {
+      logsEl.textContent = '';
+      bufferForDownload = [];
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const text = bufferForDownload.join('\n');
+      downloadText(`stream-${new Date().toISOString().replace(/[:.]/g,'_')}.txt`, text);
+    });
+
+    // --- Initialize with defaults / query params -----------------------------
+    (function init() {
+      const urlParam = qsParam('url');
+      urlEl.value = urlParam || DEFAULT_STREAM_URL;
+      const filterParam = qsParam('filter');
+      if (filterParam) filterEl.value = filterParam;
+      connect(urlEl.value);
+    })();
+  </script>
+</body>
+</html>

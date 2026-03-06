@@ -91,6 +91,10 @@ class Broker:
             try:
                 res = self.smartapi.getCandleData(historicParam)
                 data = pd.DataFrame(res['data'], columns=["timestamp", "open", "high", "low", "close", "volume"])
+                if len(data) == 0:
+                    retry_count += 1
+                    time.sleep(1)
+                    continue
                 return data[["timestamp", "open", "high", "low", "close", "volume"]]
                 
             except Exception as e:

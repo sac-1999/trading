@@ -52,6 +52,44 @@ class DBController:
             self.conn.rollback()
             print(f"✗ Insert failed: {e}")
     
+    def insert_daily_candles(self, candles: List[List]):
+        if not candles:
+            print("No candles to insert")
+            return
+        
+        insert_query = """
+            INSERT INTO stock_ohlcv_day (
+                timestamp, symbol, open, high, low, close, volume
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (symbol, timestamp) DO UPDATE SET
+                open = EXCLUDED.open,
+                high = EXCLUDED.high,
+                low = EXCLUDED.low,
+                close = EXCLUDED.close,
+                volume = EXCLUDED.volume;
+            """
+
+        data = []
+        for candle in candles:
+            timestamp = candle['timestamp']
+            data.append((
+                timestamp,  # time
+                str(candle['symbol']),
+                float(candle['open']),  # open
+                float(candle['high']),  # high
+                float(candle['low']),  # low
+                float(candle['close']),  # close
+                float(candle['volume']),  # volume
+            ))
+        
+        try:
+            execute_batch(self.cursor, insert_query, data, page_size=1000)
+            self.conn.commit()
+            print(f"✓ Inserted {len(data)} candles into database")
+        except Exception as e:
+            self.conn.rollback()
+            print(f"✗ Insert failed: {e}")
+    
     def close(self):
         """Clean up database connections"""
         self.cursor.close()
@@ -103,3 +141,34 @@ class DBController:
             }
             for row in results
         ]
+    
+    def get_daily_candles(self, symbol: str) -> List[Dict]:
+        """
+        For '1m' -> read from base table stock_ohlcv filtered by timeframe.
+        For other allowed TFs (e.g., '5m','15m','1h','1d') -> read from stock_ohlcv_<tf>.
+        """
+
+        query = """
+                SELECT *
+                FROM stock_ohlcv_day
+                WHERE symbol = %s 
+                ORDER BY timestamp ASC;
+            """
+
+        self.dict_cursor.execute(query, (symbol,))
+
+        results = self.dict_cursor.fetchall()
+        return [
+            {
+                'timestamp': (row['timestamp'].isoformat()
+                            if hasattr(row['timestamp'], 'isoformat') else str(row['timestamp'])),
+                'symbol': row['symbol'],
+                'open': float(row['open']),
+                'high': float(row['high']),
+                'low': float(row['low']),
+                'close': float(row['close']),
+                'volume': int(row['volume']),
+            }
+            for row in results
+        ]
+

@@ -10,6 +10,11 @@ def filter_by_day(df, scanday):
     df.reset_index(inplace = True, drop = True)
     return df
 
+def filter_up_to_day(df, scanday):
+    df = df[df['date'] < pd.to_datetime(scanday).date()]
+    df.reset_index(inplace = True, drop = True)
+    return df
+
 def filter_by_time(df, starttime, endtime):
     df = df[(df['time'] >= starttime) & (df['time'] <= endtime)]
     df.reset_index(inplace = True, drop = True)
@@ -28,17 +33,23 @@ def list_of_median_volume(orgdf, _date, starttime, endtime, n_days = 10):
 
 
 def save_image(symbol, df ,  _date, entry, sl, target, tm):
+
+    _date = _date.date()
     foldername = "-".join(str(_date).split(':'))
     filename = symbol
     folderpath = f"samplesimages/{foldername}" 
+ 
     filepath = f"samplesimages/{foldername}/{tm + filename}.jpg"
     os.makedirs(folderpath, exist_ok=True)
+    for f in os.listdir(folderpath):
+        if symbol in f:
+            return 
     df['time'] = pd.to_datetime(df['timestamp'])
     df.set_index('time', inplace=True)
 
     ema_plots = []
-    ema_plots.append(mpf.make_addplot(df['ema_9'], color='black', linestyle='-', width=2))
-    ema_plots.append(mpf.make_addplot(df['ema_15'], color='black', linestyle='-', width=5))
+    ema_plots.append(mpf.make_addplot(df['ema_15'], color='black', linestyle='-', width=2))
+    ema_plots.append(mpf.make_addplot(df['ema_30'], color='black', linestyle='-', width=5))
 
     entry_m = pd.Series(entry, index=df.index)
     ema_plots.append(mpf.make_addplot(entry_m, color='green', linestyle='-', width=3))
@@ -79,9 +90,9 @@ def Intraday_breakouts(df, window):
     df['resistance'] = df['resistance'].ffill()
     df['resistance'] = df['resistance'].shift(window)
     df = df.drop(columns = ['isheighest'])
-    df['breakout1'] = (df['close'] > df['resistance']) & (df['high'].cummax().shift(1) == df['resistance'].shift(1))
-    df['breakout1'] = df['breakout1'].cummax()
-    df['breakout'] = df['breakout1'].shift(1) & (df['close'] > df['high'].shift(1)) & ((df['low'] < df['ema_15']) | (df['low'].shift(1) < df['ema_15'].shift(1))) & (df['close'] > df['ema_15'])
+    df['breakout'] = (df['close'] > df['resistance']) & (df['high'].cummax().shift(1) == df['resistance'].shift(1))
+    # df['breakout1'] = df['breakout1'].cummax()
+    # df['breakout'] = df['breakout1'].shift(1) & (df['close'] > df['high'].shift(1)) & ((df['low'] < df['ema_30']) | (df['low'].shift(1) < df['ema_30'].shift(1))) & (df['close'] > df['ema_30'])
     return df 
 
 
@@ -111,9 +122,9 @@ def Intraday_breakdowns(df, window):
     df['support'] = df['support'].ffill()
     df['support'] = df['support'].shift(window)
     df = df.drop(columns = ['islowest'])
-    df['breakdown1'] = (df['close'] < df['support']) & (df['low'].cummin().shift(1) == df['support'].shift(1))
-    df['breakdown1'] = df['breakdown1'].cummax()
-    df['breakdown'] = (df['breakdown1'].shift(1)) & (df['close'] < df['low'].shift(1)) & ((df['high'] > df['ema_15']) | (df['high'].shift(1) > df['ema_15'].shift(1))) & (df['close'] < df['ema_15'].shift(1))
+    df['breakdown'] = (df['close'] < df['support']) & (df['low'].cummin().shift(1) == df['support'].shift(1))
+    # df['breakdown1'] = df['breakdown1'].cummax()
+    # df['breakdown'] = (df['breakdown1'].shift(1)) & (df['close'] < df['low'].shift(1)) & ((df['high'] > df['ema_30']) | (df['high'].shift(1) > df['ema_30'].shift(1))) & (df['close'] < df['ema_30'].shift(1))
     return df 
 
     
@@ -149,15 +160,17 @@ def single_direction_bullish_move(df, _date):
     if len(df) > 0:
         return not df.iloc[-1]['bullish']
     
-def analyse_move(stock, df, _date):
+def analyse_move(stock, df, _date, lastdaysvolumes):
     START_TIME = datetime(2025, 10, 20, 9, 15).time()
     END_TIME = datetime(2025, 10, 20, 9, 55).time()
-    lastdaysvolumes, lastdaysmedians = list_of_median_volume(df.copy(), _date, START_TIME, END_TIME)
+    if lastdaysvolumes is None:
+        lastdaysvolumes= list_of_median_volume(df.copy(), _date, START_TIME, END_TIME)
 
     df = filter_by_day(df, _date)
     df = filter_by_time(df, START_TIME, END_TIME)
     median_vol = df['volume'].median()
+    print(stock, lastdaysvolumes)
     if len(lastdaysvolumes) > 0 :
-        return median_vol > np.quantile(lastdaysvolumes, 0.9)
+        return median_vol > np.quantile(lastdaysvolumes, 0.9), lastdaysvolumes
     
-    return False
+    return False, lastdaysvolumes

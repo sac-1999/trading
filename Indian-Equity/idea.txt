@@ -1,0 +1,19 @@
+1. save last day state in redis 
+2. save trades in redis 
+
+
+day : {'lastdaystate' : {}
+       'lastdaymedianvolumes':
+       'tradesfortheday':}
+
+
+day:symbol:lastdaystate
+day:symbol:pastmedianvolume
+day:symbol:change
+day:symbol:lastdaystate = {'high':100, 'low' : 100, 'close':50}
+day:activetrades
+day:symbol:breakouts = [] 
+day:symbol:breakdowns = []
+day:symbol:majorsupport = []
+day:symbol:majorresistance = []
+day:us_market_change = []

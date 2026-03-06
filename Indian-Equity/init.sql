@@ -28,6 +28,33 @@ CREATE INDEX IF NOT EXISTS idx_stock_time
 ON stock_ohlcv (symbol, timeframe, timestamp DESC);
 
 
+
+-- Stock OHLCV table
+CREATE TABLE IF NOT EXISTS stock_ohlcv_day (
+    timestamp        TIMESTAMPTZ NOT NULL,
+    symbol      TEXT NOT NULL,
+    open        DOUBLE PRECISION,
+    high        DOUBLE PRECISION,
+    low         DOUBLE PRECISION,
+    close       DOUBLE PRECISION,
+    volume      BIGINT,
+
+    PRIMARY KEY (symbol, timestamp)
+);
+
+-- Convert to hypertable
+SELECT create_hypertable(
+    'stock_ohlcv_day',
+    'timestamp',
+    chunk_time_interval => INTERVAL '1 day',
+    if_not_exists => TRUE
+);
+
+-- Query-optimized index
+CREATE INDEX IF NOT EXISTS idx_stock_time
+ON stock_ohlcv_day (symbol, timestamp DESC);
+
+
 CREATE MATERIALIZED VIEW stock_ohlcv_5m
 WITH (timescaledb.continuous) AS
 SELECT
@@ -47,7 +74,7 @@ GROUP BY 1, 2;
 
 SELECT add_continuous_aggregate_policy(
   'stock_ohlcv_5m',
-  start_offset => INTERVAL '5 day',
+  start_offset => INTERVAL '7 day',
   end_offset   => INTERVAL '1 minute',
   schedule_interval => INTERVAL '30 second'
 );

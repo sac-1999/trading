@@ -8,7 +8,6 @@ from objects import *
 from datetime import datetime, timedelta
 from indicators import Indicators
 from strategy_utils import *
-from redis_tools import *
 
 
 logger = Logger(__name__)
@@ -53,14 +52,12 @@ def on_data(wsapp, message):
     lastdayclose = message['closed_price']/100
     ltp = message['last_traded_price']/100
     change = (ltp - lastdayclose)/lastdayclose * 100
-    stockstate = {'high' : high,
+    stockstate[stock] = {'high' : high,
                          'low' : low,
                          'open' : open,
                          'ltp' : ltp,
                          'lastdayclose': lastdayclose,
                          'change' : change}
-    set_curr_day_state(stock, stockstate)
-    
 
 def on_error(wsapp, error):
     logger.error(f"WS error: {error}")
@@ -79,26 +76,22 @@ broker_socket.sws.on_close = on_close
 def websocket_connect():
     broker_socket.sws.connect()
 
+
 def get_top_movers():
-    for symbol, isindex in allstocks:
-        data = load_curr_day_state()
-        data = sorted(data.items(), key=lambda x: x[1]['change'], reverse=True)
-        topgainers = data[:TOPLOSERSGAINERS]
-        toplosers = data[-TOPLOSERSGAINERS:]
-        return toplosers, topgainers
+    global stockstate
+    data = stockstate.copy()
+    data = sorted(data.items(), key=lambda x: x[1]['change'], reverse=True)
+    topgainers = data[:TOPLOSERSGAINERS]
+    toplosers = data[-TOPLOSERSGAINERS:]
+    return toplosers, topgainers
 
-
-def fast_sync(exchange, _date):
+def fast_daily_sync(exchange, _date):
     global LISTOFSYMBOLSTOTRADE
     while(True):
         listofsymbols = LISTOFSYMBOLSTOTRADE.copy()
         startdate = datetime(_date.year, _date.month, _date.day, 0, 0)
         enddate = datetime(_date.year, _date.month, _date.day, 23, 59)
         try:
-            if is_holiday_day(startdate, enddate, listofsymbols):
-                print(f"Possibly holiday on {_date}")
-                return 
-            print("-"*50, listofsymbols)
             for symbol, isindex in listofsymbols.items():
                 df = broker.get_candle_stick_data(exchange, symbol, 'ONE_MINUTE', startdate, enddate, isindex)
                 if len(df) == 0:
@@ -241,31 +234,6 @@ def monitor():
             print("Error in monitor thread", str(e))
             continue
                 
-def past_sync():
-   
-    _date = datetime.today() - timedelta(days= 10)
-    currdate = datetime.today()
-    startdate = datetime(_date.year, _date.month, _date.day, 0, 0)
-    enddate = datetime(currdate.year, currdate.month, currdate.day, 23, 59)
-    
-    for symbol, isindex in stocks_with_index.items():
-        try:
-            df = broker.get_candle_stick_data(EXCHANGE, symbol, 'ONE_MINUTE', startdate, enddate, isindex)
-            if len(df) == 0:
-                continue
-            df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-            df.dropna(subset=["timestamp"], inplace=True)
-            df["timestamp"] = df["timestamp"].dt.tz_convert("Asia/Kolkata")
-            df['symbol'] = symbol
-            df['timeframe'] = '1m'
-            list_of_jsons = df.to_dict(orient='records')
-            print(symbol, '  ', _date.date(), end= ' ')
-            db.insert_candles(list_of_jsons)
-        except Exception as e:
-            print("Error from fast sync thread : ", str(e))
-            continue
-            
-# past_sync()
 
 swsthread = threading.Thread(target=websocket_connect, name="SmartWS", daemon=True)
 swsthread.start()
@@ -274,12 +242,6 @@ monitorthread.start()
 syncthread = threading.Thread(target=fast_sync, name="syncthread", daemon=True, args=(EXCHANGE, datetime.today()))
 syncthread.start()
 
-print('they will run')
 while(1):
-    # startday = datetime.today() - timedelta(days=10)
-    # while(startday < datetime.today()):
-    #     fast_sync('NSE', startday, stocks_with_index)
-    #     startday = startday + timedelta(1)
-    # monitor()
     time.sleep(1000)
 

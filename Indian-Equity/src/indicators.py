@@ -52,4 +52,13 @@ class Indicators:
         data['minima'] = data['low'] == rolling_min
         return data
     
+    @staticmethod
+    def rsi(data, length, col):
+        data[col] = ta.rsi(data['close'], length)
+        return data
+    
+    @staticmethod
+    def atr(data, length, col):
+        data[col] = ta.atr(data['high'], data['low'], data['close'], length)
+        return data
     
